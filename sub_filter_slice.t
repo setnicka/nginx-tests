@@ -24,7 +24,7 @@ use Test::Nginx qw/ :DEFAULT http_content /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy slice sub/)->plan(3);
+my $t = Test::Nginx->new()->has(qw/http proxy slice sub/)->plan(5);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -75,6 +75,18 @@ my $r;
 
 $r = get('/t', 'Range: bytes=2-4');
 unlike($r, qr/\x0d\x0a?0\x0d\x0a?\x0d\x0a?\w/, 'only final chunk');
+
+# ranges are disabled, the whole response is returned
+
+$r = get('/t', 'Range: bytes=0-1');
+like($r, qr/ 200 /, 'first slice - 200 reply');
+
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.31.10');
+
+is(http_content($r), '0123456789', 'first slice - whole response');
+
+}
 
 TODO: {
 local $TODO = 'not yet';
